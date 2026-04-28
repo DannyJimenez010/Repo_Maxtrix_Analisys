@@ -27,11 +27,86 @@ class SimpleMatrixStack:
 
 #########################################################################################################################################
 #########################################################################################################################################
+##################################### Stiffness Matrix RMF (due Flexural + Shear deformation) ###########################################
+#########################################################################################################################################
+#########################################################################################################################################
+class StiffnessMatrix_simple:
+    '''
+    hola
+    '''
+    
+    def __init__(self, A,I,E,L,G,f,da = 0, db = 0):
+        self.A = A
+        self.I = I
+        self.E = E
+        self.L = L
+        self.G = G
+        self.f = f
+        self.da = da
+        self.db = db
+    
+    def stiffness_matrix_Element_RMF_L(self):
+        '''
+        Calculate the stiffness matrix inluding shear deformation of a RMF width 6 DOF
+        '''
+        A = self.A
+        I = self.I
+        E = self.E
+        L = self.L
+        G = self.G
+        f = self.f
+        
+        Be = 6*E*I*f / (G*A*L**2)
+        r = A*E /L
+        kp = 2*E*I/L * (2 + Be)/(1 + 2*Be)
+        ap = 2*E*I/L * (1 - Be)/(1 + 2*Be)
+        bp = 6*E*I/(L**2) * (1)/(1 + 2*Be)
+        tp = 12*E*I/(L**3) * (1)/(1 + 2*Be)
+
+        kl = np.array([[r,0,0,-r,0,0],
+                    [0,tp,bp,0,-tp,bp],
+                    [0,bp,kp,0,-bp,ap],
+                    [-r,0,0,r,0,0],
+                    [0,-tp,-bp,0,tp,-bp],
+                    [0,bp,ap,0,-bp,kp]], dtype=float)
+    
+        return kl
+    
+    def transform_matrix_df_to_indf(self):
+        da = self.da
+        db = self.db
+        '''
+        This function transform the stiffness matrix of deformable state to infeformable state
+        '''
+        Tr = np.array([[1,0,0,0,0,0],
+                       [0,1,0,0,0,0],
+                       [0,da,1,0,0,0],
+                       [0,0,0,1,0,0],
+                       [0,0,0,0,1,0],
+                       [0,0,0,0,-db,1],
+                       ])
+        # Tr = np.array([[1,0,0,0,0,0],
+        #                [0,1,da,0,0,0],
+        #                [0,0,1,0,0,0],
+        #                [0,0,0,1,0,0],
+        #                [0,0,0,0,1,-db],
+        #                [0,0,0,0,0,1],
+        #                ])
+        return Tr
+
+#########################################################################################################################################
+#########################################################################################################################################
 ############################ Stiffness Matrix for 2D MF Element with Rigid End Offsets and Shear Deformation ############################
 #########################################################################################################################################
 #########################################################################################################################################
 
 class MF_K_T_L_Element2D:
+    '''
+    What this class does
+    --------------------
+    
+    - Builds and returns the local stiffness matrix of the 2D MF element considering axial deformation, Timoshenko-type shear deformation, flexural    deformation, and the influence of rigid end offsets.
+    '''
     def __init__(self, E, A, I, L, nu=0.20, f=6/5, dA=0.0, dB=0.0, thetha=0.0):                                     # Initialize MF element properties
         self.E  = E                                                                                                 # Modulus of elasticity
         self.A  = A                                                                                                 # Cross-sectional area
@@ -43,7 +118,9 @@ class MF_K_T_L_Element2D:
         self.dB = dB                                                                                                # Rigid end offset at end B (local)
         self.thetha = thetha                                                                                        # Orientation angle in degrees
 
-    def stiffness_matrix_MF_L(self):
+    def stiffness_matrix_MF_EI_AE_GAf_da_db(self):
+        '''
+        '''
         E  = self.E                                                                                                 # Using element properties (Modulus of elasticity)
         A  = self.A                                                                                                 # Using element properties (Cross-sectional area)
         I  = self.I                                                                                                 # Using element properties (Moment of inertia)
@@ -58,7 +135,7 @@ class MF_K_T_L_Element2D:
 
         # --- Shear deformation correction (Timoshenko-type) -------------------------------------------------------
         G = E / (1.0 + 2 * nu)                                                                                      # Shear modulus: G = E / [2(1+nu)]
-        beta = (6.0 * E * I) / (G * A * L**2) * f                                                                   # beta = (6EI)/(GA L^2) * f
+        beta = 6*E*I*f / (G*A*L**2)                                                                                 # beta = (6EI)/(GA L^2) * f
 
         # --- Base (prime) coefficients including shear deformation ------------------------------------------------
         t1 = (12.0 * E * I) / (L**3) * (1.0 / (1.0 + 2.0 * beta))                                                   # t' = 12EI/L^3 * 1/(1+2beta)
@@ -146,13 +223,14 @@ class MF_L_elements2D:                                                          
 #########################################################################################################################################
 
 class M_visual_2D_3D:                                                                                               # Class for visualize any values of a matrix     
-    def __init__(self, Matrix):                                                                                     # Initialize the class with the matrix to be plotted
+    def __init__(self, Matrix, color = 'seismic'):                                                                                     # Initialize the class with the matrix to be plotted
         self.ElemDraw = Matrix                                                                                      # Store the input matrix as an internal variable
-
+        self.color = color
     def M_visual(self):                                                                                             # Method to generate the 2D and 3D visualization of the matrix values
 
         ElemDraw = self.ElemDraw                                                                                    # Local variable containing the matrix to be visualized
-
+        color = self.color
+        
         fig = plt.figure(figsize=(18, 9))                                                                           # Create the main figure with a wide format
         fig.suptitle("Representation of Stiffness Matrix Values",                                                   # Add a global title to the figure
              fontsize=18, fontweight='bold', color=(0, 0, 1))                                                       # Define font size, bold style, and blue color
@@ -161,7 +239,7 @@ class M_visual_2D_3D:                                                           
         # -----------------------------------------------
         ax0 = fig.add_subplot(1, 2, 1)                                                                              # Create the first subplot for the 2D representation
         lim = np.max(np.abs(ElemDraw))                                                                              # Compute the maximum absolute value for symmetric color scaling
-        im0 = ax0.imshow(ElemDraw, cmap='seismic', aspect='equal', vmin=-lim, vmax=lim)                             # Display the matrix as a 2D color map
+        im0 = ax0.imshow(ElemDraw, cmap= color, aspect='equal', vmin=-lim, vmax=lim)                                # Display the matrix as a 2D color map
         cbar0 = fig.colorbar(im0, ax=ax0, pad=0.01, fraction=0.03)                                                  # Add a colorbar associated with the 2D plot
         cbar0.set_label('Values')                                                                                   # Label the colorbar
         ax0.set_title('Matrix Values in 2D', fontweight='bold')                                                     # Set the title of the 2D subplot
