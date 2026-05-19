@@ -167,7 +167,8 @@ class MF_K_T_L_Element2D:
         return K_e                                                                                                  # Return the element stiffness matrix
     
     def transformation_matrix_2D(self):
-        thetha = np.deg2rad(self.thetha)                                                                            # Using orientation angle
+        thetha_radian = self.thetha
+        thetha = np.deg2rad(thetha_radian)                                                                            # Using orientation angle
         
         c = np.cos(thetha)                                                                                          # Cosine of the angle
         s = np.sin(thetha)                                                                                          # Sine of the angle
@@ -191,27 +192,37 @@ class MF_K_T_L_Element2D:
 #########################################################################################################################################
 #########################################################################################################################################
 
-class MF_L_elements2D:                                                                                              # Class for managing multiple 2D MF elements     
-    def __init__(self):                                                                                             # Initialize the list of elements
+class Manager_K_T_elements2D:                                                                                              # Class for managing multiple 2D MF elements     
+    def __init__(self, method = 'MF'):                                                                                             # Initialize the list of elements
         self.elements = []                                                                                          # List to store MF elements
-
+        self.method = method
+        
     def add_element(self, element):                                                                                 # Method to add an element to the list                            
         self.elements.append(element)                                                                               # Append the element to the list                 
 
     def stacked_stiffness_matrices(self):                                                                           # Method to stack stiffness matrices of all elements         
+        method = self.method
         K_L_blocks = []                                                                                             # Initialize list to hold stiffness matrices                
 
-        for elem in self.elements:                                                                                  # Loop through each element
-            K_L_blocks.append(elem.stiffness_matrix_MF_L())                                                         # Append the stiffness matrix of the element
-
+        if method == 'MF':
+                for elem in self.elements:                                                                                  # Loop through each element
+                        K_L_blocks.append(elem.stiffness_matrix_MF_EI_AE_GAf_da_db())                                                         # Append the stiffness matrix of the element
+        else:
+                for elem in self.elements:                                                                                  # Loop through each element
+                        K_L_blocks.append(elem.stiffness_matrix_ARM_AE())   
+                
         return np.vstack(K_L_blocks)                                                                                # Return the stacked stiffness matrices as a single array
     
     def stacked_transformation_matrices(self):                                                                      # Method to stack transformation matrices of all elements         
+        method = self.method
         T_blocks = []                                                                                               # Initialize list to hold transformation matrices                
 
-        for elem in self.elements:                                                                                  # Loop through each element
-            T_blocks.append(elem.transformation_matrix_2D())                                                        # Append the transformation matrix of the element
-
+        if method == 'MF':
+                for elem in self.elements:                                                                                  # Loop through each element
+                        T_blocks.append(elem.transformation_matrix_2D())                                                        # Append the transformation matrix of the element
+                else:
+                        T_blocks.append(elem.transformation_ARM_matrix_2D()) 
+        
         return np.vstack(T_blocks)                                                                                  # Return the stacked transformation matrices as a single array
     
 
@@ -232,7 +243,7 @@ class M_visual_2D_3D:                                                           
         color = self.color
         
         fig = plt.figure(figsize=(18, 9))                                                                           # Create the main figure with a wide format
-        fig.suptitle("Representation of Stiffness Matrix Values",                                                   # Add a global title to the figure
+        fig.suptitle("Representation Matrix Values",                                                   # Add a global title to the figure
              fontsize=18, fontweight='bold', color=(0, 0, 1))                                                       # Define font size, bold style, and blue color
         # -----------------------------------------------
         # Subplot 1: Matrix in 2D
@@ -272,3 +283,202 @@ class M_visual_2D_3D:                                                           
 
         plt.tight_layout()                                                                                          # Adjust subplot spacing automatically
         plt.show()                                                                                                  # Display the final figure
+        
+     
+#########################################################################################################################################
+#########################################################################################################################################
+########################################################## Plot Results Simple Beam ############################################################
+#########################################################################################################################################
+#########################################################################################################################################
+
+class Manual_Flexural_Method():
+    def __init__(self, am1 = any, am2 = any, am3 = any, am4 = any, am5 = any, X = any, Y = any
+                 , ylabel = 'AM', L = any, title = 'Flexural'):
+            self.am1 = am1
+            self.am2 = am2
+            self.am3 = am3
+            self.am4 = am4
+            self.am5 = am5
+            self.X = X
+            self.Y = Y
+            self.ylabel = ylabel
+            self.L = L
+            self.title = title
+            
+    def Plot_AM_Manual_Flexural_Method(self):
+            am1 = self.am1
+            am2 = self.am2
+            am3 = self.am3
+            am4 = self.am4
+            am5 = self.am5
+            X = self.X
+            Y = self.Y
+            L = self.L
+            ylabel = self.ylabel
+            title = self.title
+                            
+            
+            fig, ax = plt.subplots(6,1, figsize = (20,20))
+
+            #----- all defformation------
+            ax[0].plot(X, Y, color = (0,0,0), lw = 2, ls = '-', marker = 'o',
+                    markersize = 10, markerfacecolor = (1,1,1))
+
+            ax[0].plot(X, am1, color = (0,0,1), lw = 1, ls = '-', marker = '^', markersize = 4,
+                    label = f'{title} Diagram, all defformations')
+            ax[0].fill_between(X, am1, color = (0.5,0.5,1), alpha = 0.5)
+
+            for i in np.arange(0, len(X),1):
+                    ax[0].text(X[i],am1[i], f'{am1[i]:.2f}', fontsize = 10, fontweight = 'bold', ha='center', va='bottom')
+                    
+            ax[0].set_title(f'{title} Diagram, due all defformations', fontsize = 12, fontweight = 'bold')
+            ax[0].set_xlabel('Distance [m]')
+            ax[0].set_ylabel(ylabel)
+            ax[0].set_xlim([-L*0.1,X[-1]+(L*0.1)])
+            ax[0].legend()
+
+            #----- Real loads ------
+            ax[1].plot(X, Y, color = (0,0,0), lw = 2, ls = '-', marker = 'o',
+                    markersize = 10, markerfacecolor = (1,1,1))
+
+            ax[1].plot(X, am2, color = (1,0,0), lw = 1, ls = '-', marker = '^', markersize = 4,
+                    label = f'{title} Diagram, due Real Loads')
+            ax[1].fill_between(X, am2, color = (1,0.5,0.5), alpha = 0.5)
+
+            for i in np.arange(0, len(X),1):
+                    ax[1].text(X[i],am2[i], f'{am2[i]:.2f}', fontsize = 10, fontweight = 'bold', ha='center', va='bottom')
+                    
+            ax[1].set_title(f'{title} Diagram, due Real Loads', fontsize = 12, fontweight = 'bold')
+            ax[1].set_xlabel('Distance [m]')
+            ax[1].set_ylabel(ylabel)
+            ax[1].set_xlim([-L*0.1,X[-1]+(L*0.1)])
+            ax[1].legend()
+
+            #----- Climate Effects ------
+            ax[2].plot(X, Y, color = (0,0,0), lw = 2, ls = '-', marker = 'o',
+                    markersize = 10, markerfacecolor = (1,1,1))
+
+            ax[2].plot(X, am3, color = (1,0,1), lw = 1, ls = '-', marker = '^', markersize = 4,
+                    label = f'{title} Diagram, due Climate Effects')
+            ax[2].fill_between(X, am3, color = (1,0.5,1), alpha = 0.5)
+
+            for i in np.arange(0, len(X),1):
+                    ax[2].text(X[i],am3[i], f'{am3[i]:.2f}', fontsize = 10, fontweight = 'bold', ha='center', va='bottom')
+                    
+            ax[2].set_title(f'{title} Diagram, due Climate Effects', fontsize = 12, fontweight = 'bold')
+            ax[2].set_xlabel('Distance [m]')
+            ax[2].set_ylabel(ylabel)
+            ax[2].set_xlim([-L*0.1,X[-1]+(L*0.1)])
+            ax[2].legend()
+
+            #----- due previus defformations ------
+            ax[3].plot(X, Y, color = (0,0,0), lw = 2, ls = '-', marker = 'o',
+                    markersize = 10, markerfacecolor = (1,1,1))
+
+            ax[3].plot(X, am4, color = (0.5,0.5,1), lw = 1, ls = '-', marker = '^', markersize = 4,
+                    label = f'{title} Diagram, due previus defformations')
+            ax[3].fill_between(X, am4, color = (0.25,0.25,0.5), alpha = 0.5)
+
+            for i in np.arange(0, len(X),1):
+                    ax[3].text(X[i],am4[i], f'{am4[i]:.2f}', fontsize = 10, fontweight = 'bold', ha='center', va='bottom')
+
+            ax[3].set_title(f'{title} Diagram, due previus defformations', fontsize = 12, fontweight = 'bold')
+            ax[3].set_xlabel('Distance [m]')
+            ax[3].set_ylabel(ylabel)
+            ax[3].set_xlim([-L*0.1,X[-1]+(L*0.1)])
+            ax[3].legend()
+
+            #----- due support Displacement ------
+            ax[4].plot(X, Y, color = (0,0,0), lw = 2, ls = '-', marker = 'o',
+                    markersize = 10, markerfacecolor = (1,1,1))
+
+            ax[4].plot(X, am5, color = (0.3, 0.3, 0.3), lw = 1, ls = '--', marker = '^', markersize = 4,
+                    label = f'{title} Diagram, due support Displacement')
+            ax[4].fill_between(X, am5, color = (0.3,0.3,0.3), alpha = 0.2)
+
+            for i in np.arange(0, len(X),1):
+                    ax[4].text(X[i],am5[i], f'{am5[i]:.2f}',fontsize = 10, fontweight = 'bold', ha='center', va='bottom')
+                    
+            ax[4].set_title(f'{title} Diagram, due support Displacement', fontsize = 12, fontweight = 'bold')
+            ax[4].set_xlabel('Distance [m]')
+            ax[4].set_ylabel(ylabel)
+            ax[4].set_xlim([-L*0.1,X[-1]+(L*0.1)])
+            ax[4].legend()
+
+            #----- due support Displacement ------
+            ax[5].plot(X, Y, color = (0,0,0), lw = 2, ls = '-', marker = 'o',
+                    markersize = 10, markerfacecolor = (1,1,1))
+
+            ax[5].plot(X, am1, color = (0,0,1), lw = 1, ls = '-', marker = '^', markersize = 4,
+                    label = f'{title} Diagram, all defformations')
+            ax[5].plot(X, am2, color = (1,0,0), lw = 1, ls = '-', marker = '^', markersize = 4,
+                    label = f'{title} Diagram, due Real Loads')
+            ax[5].plot(X, am3, color = (1,0,1), lw = 1, ls = '-', marker = '^', markersize = 4,
+                    label = f'{title} Diagram, due Climate Effects')
+            ax[5].plot(X, am4, color = (0.5,0.5,1), lw = 1, ls = '-', marker = '^', markersize = 4,
+                    label = f'{title} Diagram, due previus defformations')
+            ax[5].plot(X, am5, color = (0.3, 0.3, 0.3), lw = 1, ls = '--', marker = '^', markersize = 4,
+                    label = f'{title} Diagram, due support Displacement')
+
+
+            ax[5].set_title(f'{title} Diagram, Comparison', fontsize = 12, fontweight = 'bold')
+            ax[5].set_xlabel('Distance [m]')
+            ax[5].set_ylabel(ylabel)
+            ax[5].set_xlim([-L*0.1,X[-1]+(L*0.1)])
+            ax[5].legend()
+
+            plt.tight_layout() 
+            plt.show()        
+
+#########################################################################################################################################
+#########################################################################################################################################
+############################################## Stiffness Matrix for TRUSS Element #######################################################
+#########################################################################################################################################
+#########################################################################################################################################
+
+class ARM_K_T_Element2D:
+    '''
+    What this class does
+    --------------------
+    
+    - Builds and returns the local stiffness matrix of the TRUSS element considering axial deformation.
+    '''
+    def __init__(self, E, A, L, thetha=0.0):                                                                        # Initialize TRUSS element properties
+        self.E  = E                                                                                                 # Modulus of elasticity
+        self.A  = A                                                                                                 # Cross-sectional area
+        self.L  = L                                                                                                 # Length of the flexible span (between element end nodes)
+        self.thetha = thetha                                                                                        # Orientation angle in degrees
+
+    def stiffness_matrix_ARM_AE(self):
+        '''
+        '''
+        E  = self.E                                                                                                 # Using element properties (Modulus of elasticity)
+        A  = self.A                                                                                                 # Using element properties (Cross-sectional area)
+        L  = self.L                                                                                                 # Using element properties (Length of the flexible span)
+        
+        # --- Axial stiffness term ---------------------------------------------------------------------------------
+        r = A * E / L                                                                                               # r = AE/L
+
+        # --- Local stiffness matrix for TRUSS element (axial) ----------------------
+        K_ea = np.array([
+                [A*E/L, -A*E/L],
+                [-A*E/L, A*E/L]
+                    ], dtype=float)
+
+        return K_ea                                                                                                 # Return the element stiffness matrix
+    
+    def transformation_ARM_matrix_2D(self):
+        thetha_radian = self.thetha
+        thetha = np.deg2rad(thetha_radian)                                                                          # Using orientation angle
+        
+        c = np.cos(thetha)                                                                                          # Cosine of the angle
+        s = np.sin(thetha)                                                                                          # Sine of the angle
+
+        T_ARM = np.array([                                                                                          # Transformation matrix for 2D element
+            [c, 0],
+            [s, 0],
+            [0, c],
+            [0, s]
+        ], dtype=float)
+
+        return T_ARM                                                                                                # Return the transformation matrix
